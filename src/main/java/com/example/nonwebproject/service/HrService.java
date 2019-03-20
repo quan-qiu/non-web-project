@@ -29,21 +29,17 @@ public class HrService {
     private String PROLINK_API_SERVER;
 
     public void runTestCommand() {
-        String s_date = "2018-11-08";
+        String s_date = "2019-03-18";
         String plant_location = "CZ";
 
         try {
             deleteExistDlmsHrWorkHour(s_date, plant_location);
-            List<String> ids = getEmployeeIdsFromHr(s_date,plant_location);
 
+            //List<String> ids = getEmployeeIdsFromHr(s_date,plant_location);
+            List<String> ids = getEmployeeIdsFromDlms(s_date,plant_location);
             for (String id : ids){
-                System.out.println(id);
-                insertDlmsHrWorkHour(getDlWorkHoursFromHr(id,s_date));
+                insertDlmsHrWorkHour(getDlWorkHoursFromHr(id,s_date,plant_location));
             }
-           //HashMap dlWorkHour = getDlWorkHoursFromHr("8699",s_date);
-
-           // insertDlmsHrWorkHour(dlWorkHour);
-           //getCostcenterByWorkcenter("5801",plant_location);
         }catch (Exception e){
             System.out.println(e.fillInStackTrace());
         }
@@ -53,11 +49,10 @@ public class HrService {
 
         try {
             deleteExistDlmsHrWorkHour(s_date, plant_location);
-            List<String> ids = getEmployeeIdsFromHr(s_date,plant_location);
-
+            //List<String> ids = getEmployeeIdsFromHr(s_date,plant_location);
+            List<String> ids = getEmployeeIdsFromDlms(s_date,plant_location);
             for (String id : ids){
-                System.out.println(id);
-                insertDlmsHrWorkHour(getDlWorkHoursFromHr(id,s_date));
+                insertDlmsHrWorkHour(getDlWorkHoursFromHr(id,s_date, plant_location));
             }
 
         }catch (Exception e){
@@ -93,7 +88,22 @@ public class HrService {
         return employeeIds;
     }
 
-    public HashMap getDlWorkHoursFromHr(String id, String s_date) throws Exception {
+    public List<String> getEmployeeIdsFromDlms(String s_date, String plant_location) throws Exception{
+        List<String> employeeIds = new ArrayList<>();
+
+        String employees_sql = "select dl_id from dlms_drot_dl_allocation where date(shift_start)=? and plant_location=?";
+        Object[] params = {s_date,plant_location};
+        SqlRowSet result = jdbcPrimaryTemplate.queryForRowSet(employees_sql,params);
+
+        while (result.next()){
+            employeeIds.add(result.getString("dl_id"));
+        }
+        System.out.println(employeeIds);
+
+        return employeeIds;
+    }
+
+    public HashMap getDlWorkHoursFromHr(String id, String s_date, String plant) throws Exception {
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
 
@@ -106,7 +116,8 @@ public class HrService {
         HttpEntity<String> entity = new HttpEntity<String>(headers);
 
         ResponseEntity<String> response = restTemplate.exchange(resourceURL, HttpMethod.GET, entity, String.class);
-        HashMap dlWorkHour = new HashMap();
+        HashMap dlWorkHour = null;
+
         if (null != response || response.getStatusCode() == HttpStatus.OK) {
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode rootNode;
@@ -117,6 +128,7 @@ public class HrService {
 
             while (elements.hasNext()) {
                 JsonNode idNode = elements.next();
+                dlWorkHour = new HashMap();
                 dlWorkHour.put("date", idNode.get("date").textValue());
                 dlWorkHour.put("dl_name", idNode.get("name").textValue());
                 dlWorkHour.put("hours", idNode.get("t_hours").asDouble());
@@ -124,27 +136,19 @@ public class HrService {
                 dlWorkHour.put("dl_id", idNode.get("id").textValue());
                 dlWorkHour.put("dept", idNode.get("dept").textValue());
 
-                HashMap leader = getEmployeeLeader(s_date,idNode.get("id").textValue());
-                if (leader != null){
-                    dlWorkHour.put("day_tl_id", leader.get("day_tl_id"));
-                    dlWorkHour.put("day_tl_name", leader.get("day_tl_name"));
-                    dlWorkHour.put("night_tl_id", leader.get("night_tl_id"));
-                    dlWorkHour.put("night_tl_name",leader.get("night_tl_name"));
-                }else{
-                    dlWorkHour.put("day_tl_id", "");
-                    dlWorkHour.put("day_tl_name", "");
-                    dlWorkHour.put("night_tl_id", "");
-                    dlWorkHour.put("night_tl_name", "");
-                }
+                HashMap leader = getEmployeeLeader(s_date,idNode.get("id").textValue(),plant);
 
-                /*dlWorkHour.put("day_tl_id", idNode.get("day_tl_id").textValue());
-                dlWorkHour.put("day_tl_name", idNode.get("day_tl_name").textValue());
-                dlWorkHour.put("night_tl_id", idNode.get("night_tl_id").textValue());
-                dlWorkHour.put("night_tl_name",idNode.get("night_tl_name").textValue());*/
+                if (leader != null){
+                    dlWorkHour.put("tl_id", leader.get("tl_id"));
+                    dlWorkHour.put("tl_name", leader.get("tl_name"));
+                    dlWorkHour.put("shift", leader.get("shift"));
+                }else {
+                    return null;
+                }
 
                 String plant_location = idNode.get("location").textValue();
                 dlWorkHour.put("plant_location",plant_location);
-                String work_center = getEmployeeWorkcenter(s_date,id);
+                String work_center = getEmployeeWorkcenter(s_date, id, plant);
                 dlWorkHour.put("work_center", work_center);
                 String cost_center = Utility.getCostcenterByWorkcenter(PROLINK_API_SERVER,work_center,plant_location);
                 dlWorkHour.put("cost_center", cost_center);
@@ -154,10 +158,10 @@ public class HrService {
         return dlWorkHour;
     }
 
-    public String getEmployeeWorkcenter(String s_date, String id){
+    public String getEmployeeWorkcenter(String s_date, String id, String plant){
         String sql = "select orig_assigned_work_center from dlms_drot_dl_allocation " +
-                "where dl_id=? and date(shift_start)=?";
-        Object[] params = new Object[]{ id, s_date};
+                "where dl_id=? and date(shift_start)=? and plant_location=?";
+        Object[] params = new Object[]{ id, s_date, plant};
 
         SqlRowSet result = jdbcPrimaryTemplate.queryForRowSet(sql,params);
 
@@ -168,28 +172,29 @@ public class HrService {
 
     }
 
-    public HashMap getEmployeeLeader(String s_date, String id){
-        HashMap leader = new HashMap();
+    public HashMap getEmployeeLeader(String s_date, String id, String plant){
+        HashMap leader = null;
         String sql = "select shift_type, assigned_to_tl_id, assigned_to_tl_name from dlms_drot_dl_allocation " +
-                "where dl_id=? and date(shift_start)=?";
-        Object[] params = new Object[]{ id, s_date};
+                "where dl_id=? and date(shift_start)=? and plant_location=?";
+        Object[] params = new Object[]{ id, s_date, plant};
 
         SqlRowSet result = jdbcPrimaryTemplate.queryForRowSet(sql,params);
 
         while (result.next()){
+            leader = new HashMap();
+            leader.put("tl_id", result.getString("assigned_to_tl_id"));
+            leader.put("tl_name", result.getString("assigned_to_tl_name"));
             if (result.getString("shift_type").contains("DAY")){
-                leader.put("day_tl_id", result.getString("assigned_to_tl_id"));
-                leader.put("day_tl_name", result.getString("assigned_to_tl_name"));
-                leader.put("night_tl_id", "");
-                leader.put("night_tl_name", "");
+                leader.put("shift", "day");
             }
             if (result.getString("shift_type").contains("NIGHT")){
-                leader.put("day_tl_id", "");
-                leader.put("day_tl_name", "");
-                leader.put("night_tl_id", result.getString("assigned_to_tl_id"));
-                leader.put("night_tl_name", result.getString("assigned_to_tl_name"));
+                leader.put("shift", "night");
+            }
+            if (result.getString("shift_type").contains("MIDDLE")){
+                leader.put("shift", "middle");
             }
         }
+
         return leader;
     }
 
@@ -205,23 +210,21 @@ public class HrService {
 
 
     public void insertDlmsHrWorkHour(HashMap dlWorkHour) {
+
+        if (dlWorkHour == null){
+            return;
+        }
+
         String sql = "insert into dlms_hr_work_hour(dl_id, dl_name,w_date,hours,plant_location,dept" +
-                ",day_tl_id,day_tl_name,night_tl_id,night_tl_name,work_center,shift,cost_center) values(?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                ",tl_id,tl_name,work_center,shift,cost_center) values(?,?,?,?,?,?,?,?,?,?,?)";
         String shift = "";
 
-        if (dlWorkHour.get("day_tl_id") != null && (!dlWorkHour.get("day_tl_id").equals(""))) {
-            shift = "day";
-        }
-
-        if (dlWorkHour.get("night_tl_id") != null && (!dlWorkHour.get("night_tl_id").equals(""))) {
-            shift = "night";
-        }
 
         Object[] params = new Object[]{dlWorkHour.get("dl_id"), dlWorkHour.get("dl_name"),dlWorkHour.get("date"),
                 dlWorkHour.get("hours"), dlWorkHour.get("plant_location"), dlWorkHour.get("dept"),
-                dlWorkHour.get("day_tl_id"), dlWorkHour.get("day_tl_name"), dlWorkHour.get("night_tl_id"),
-                dlWorkHour.get("night_tl_name"), dlWorkHour.get("work_center"),shift,dlWorkHour.get("cost_center")};
-        System.out.println( params.toString());
+                dlWorkHour.get("tl_id"), dlWorkHour.get("tl_name"),
+                dlWorkHour.get("work_center"),dlWorkHour.get("shift"),dlWorkHour.get("cost_center")};
+        //System.out.println( Arrays.asList(params));
         jdbcPrimaryTemplate.update(sql, params);
     }
 
@@ -231,9 +234,13 @@ public class HrService {
         List<Map<String, Object>> result = null;
 
         String sql = "select sum(hours)*60 total from dlms_hr_work_hour " +
-                "where plant_location=? and date(w_date)=? and work_center=? ";
+                "where plant_location=? and date(w_date)=? and work_center=? and shift=?";
 
-        if (shift_type.equals("DAY")){
+        result = jdbcPrimaryTemplate.queryForList(sql,
+                new Object[]{plant_location, s_date, work_center, shift_type}
+        );
+
+/*        if (shift_type.equals("DAY")){
             sql = sql + "and day_tl_id is not null and day_tl_id<>'' ";
             result = jdbcPrimaryTemplate.queryForList(sql,
                     new Object[]{plant_location, s_date, work_center}
@@ -245,7 +252,7 @@ public class HrService {
             result = jdbcPrimaryTemplate.queryForList(sql,
                     new Object[]{plant_location, s_date, work_center}
             );
-        }
+        }*/
 
         if (result != null){
             if (result.size() > 0) {

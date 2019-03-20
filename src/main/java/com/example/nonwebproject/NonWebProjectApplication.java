@@ -48,17 +48,18 @@ public class NonWebProjectApplication implements CommandLineRunner {
 
         //hrService.runTestCommand();
         //qadService.runTestCommand();
-        //offStandardService.runTestCommand();
+       // offStandardService.runTestCommand();
         //System.out.println(userService.getUsers().get(0).getName());
 
         String plant_location = "CZ";
+
        productionRun(plant_location);
 
         exit(0);
     }
 
     public void productionRun(String plant_location) throws Exception{
-        List<LocalDate> dateRange = Utility.getDatesBetweenUsingJava8("2018-12-21", "2018-12-21");
+        List<LocalDate> dateRange = Utility.getDatesBetweenUsingJava8("2019-03-15", "2019-03-15");
 
         for (LocalDate date: dateRange ) {
 
