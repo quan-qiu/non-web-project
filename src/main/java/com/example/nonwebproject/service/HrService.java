@@ -29,17 +29,18 @@ public class HrService {
     private String PROLINK_API_SERVER;
 
     public void runTestCommand() {
-        String s_date = "2019-03-18";
+        String s_date = "2019-06-09";
         String plant_location = "CZ";
 
-        try {
-            deleteExistDlmsHrWorkHour(s_date, plant_location);
 
-            //List<String> ids = getEmployeeIdsFromHr(s_date,plant_location);
-            List<String> ids = getEmployeeIdsFromDlms(s_date,plant_location);
-            for (String id : ids){
-                insertDlmsHrWorkHour(getDlWorkHoursFromHr(id,s_date,plant_location));
-            }
+        try {
+           // getDlWorkHoursFromHr("10718", s_date, plant_location);
+           //deleteExistDlmsHrWorkHour(s_date, plant_location);
+
+            //List<String> ids = getEmployeeIdsFromDlms(s_date,plant_location);
+           // for (String id : ids){
+                insertDlmsHrWorkHour(getDlWorkHoursFromHr("10718",s_date, plant_location));
+           // }
         }catch (Exception e){
             System.out.println(e.fillInStackTrace());
         }
@@ -49,7 +50,7 @@ public class HrService {
 
         try {
             deleteExistDlmsHrWorkHour(s_date, plant_location);
-            //List<String> ids = getEmployeeIdsFromHr(s_date,plant_location);
+
             List<String> ids = getEmployeeIdsFromDlms(s_date,plant_location);
             for (String id : ids){
                 insertDlmsHrWorkHour(getDlWorkHoursFromHr(id,s_date, plant_location));
@@ -83,27 +84,31 @@ public class HrService {
                 employeeIds.add(id);
             }
         }
-        System.out.println(employeeIds);
 
+        //System.out.println("========= print hr EmployeeIdsFromHr  ==============");
+        //System.out.println(employeeIds);
+        //System.out.println("========= end of print hr EmployeeIdsFromHr  ==============");
         return employeeIds;
     }
 
     public List<String> getEmployeeIdsFromDlms(String s_date, String plant_location) throws Exception{
         List<String> employeeIds = new ArrayList<>();
 
-        String employees_sql = "select dl_id from dlms_drot_dl_allocation where date(shift_start)=? and plant_location=?";
+        String employees_sql = "select distinct dl_id from dlms_drot_dl_allocation where date(shift_start)=? and plant_location=?";
         Object[] params = {s_date,plant_location};
         SqlRowSet result = jdbcPrimaryTemplate.queryForRowSet(employees_sql,params);
 
         while (result.next()){
             employeeIds.add(result.getString("dl_id"));
         }
-        System.out.println(employeeIds);
-
+        //System.out.println("========= print dlms EmployeeIdsFromDlms  ==============");
+       // System.out.println(employeeIds);
+        //System.out.println("========= end of print dlms EmployeeIdsFromDlms  ==============");
         return employeeIds;
     }
 
     public HashMap getDlWorkHoursFromHr(String id, String s_date, String plant) throws Exception {
+
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
 
@@ -153,7 +158,7 @@ public class HrService {
                 String cost_center = Utility.getCostcenterByWorkcenter(PROLINK_API_SERVER,work_center,plant_location);
                 dlWorkHour.put("cost_center", cost_center);
             }
-           // System.out.println(dlWorkHour);
+            //System.out.println(dlWorkHour);
         }
         return dlWorkHour;
     }

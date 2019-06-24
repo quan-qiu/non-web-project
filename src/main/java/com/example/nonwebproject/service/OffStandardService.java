@@ -7,7 +7,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 import com.example.nonwebproject.utility.Utility;
-import sun.plugin.javascript.navig.Array;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -38,10 +37,14 @@ public class OffStandardService {
     private final String MIDDLE = "MIDDLE";
 
     public void runTestCommand() {
-        String s_date = "2019-03-18";
+        String s_date = "2019-06-18";
         String plant_location = "CZ";
         String shift_tye = "day";
         try {
+            //getRealWorkTimeByWorkcenter3("2019-03-25 08:00:00","2019-03-25 20:00:00", "A08", "CZ");
+
+
+            //System.out.println(Arrays.asList(testGetWorkCenterByDate("2019-04-04", "0738", "CZ")));
             //callCreateOffStandardData(s_date, plant_location, shift_tye);
             //callCreateOffStandardData(s_date, plant_location, "night");
             callCreateOffStandardData2(s_date, plant_location);
@@ -55,16 +58,13 @@ public class OffStandardService {
 
         try {
             callCreateOffStandardData2(s_date, plant_location);
-/*            callCreateOffStandardData(s_date, plant_location, day_shift);
-            callCreateOffStandardData(s_date, plant_location, night_shift);
-            calcolateWorkcenterWithNoShift(s_date, plant_location, day_shift);
-            calcolateWorkcenterWithNoShift(s_date, plant_location, night_shift);*/
         }catch (Exception e){
             System.out.println(e.fillInStackTrace());
         }
     }
 
     public void deleteExistDlmsWorkcenterOffstandard(String plant_location, String shift_type, String s_date, String work_center) {
+        System.out.println("================= start of deleteExistDlmsWorkcenterOffstandard ====");
         String sql = "DELETE FROM dlms_workcenter_offstandard " +
                 "WHERE DATE(w_date)=? AND plant_location=? AND shift_type=? AND work_center=?";
         Object[] params = new Object[]{s_date, plant_location, shift_type, work_center};
@@ -88,12 +88,12 @@ public class OffStandardService {
                 " then sum(ROUND(time_to_sec((TIMEDIFF(work_end, work_start))) / 60)) " +
                 " else 0 end total_loan_in " +
                 " FROM dlms_drot_dl_history " +
-                " WHERE plant_location=? and shift_start=? " +
+                " WHERE shift_start=? " +
                 " AND work_center=? and dl_id not in (" +
                 " select dl_id from dlms_drot_dl_allocation where plant_location=? and shift_start=? and orig_assigned_work_center=? )";
 
         SqlRowSet loan_in_result= jdbcPrimaryTemplate.queryForRowSet(sql_loan_in,
-                new Object[]{plant_location,shift_start, work_center,
+                new Object[]{shift_start, work_center,
                         plant_location,shift_start, work_center});
 
         while (loan_in_result.next()){
@@ -104,12 +104,12 @@ public class OffStandardService {
                 " then sum(ROUND(time_to_sec((TIMEDIFF(work_end, work_start))) / 60)) " +
                 " else 0 end total_loan_out " +
                 " FROM dlms_drot_dl_history " +
-                " WHERE plant_location=? and shift_start=? " +
+                " WHERE shift_start=? " +
                 "  and work_center<>? AND dl_id in (" +
                 " select dl_id from dlms_drot_dl_allocation where plant_location=? and shift_start=? and orig_assigned_work_center=? ) ";
 
         SqlRowSet loan_out_result= jdbcPrimaryTemplate.queryForRowSet(sql_loan_out,
-                new Object[]{plant_location,shift_start,
+                new Object[]{shift_start,
                         work_center,
                         plant_location,shift_start, work_center});
 
@@ -134,12 +134,12 @@ public class OffStandardService {
                 " then sum(ROUND(time_to_sec((TIMEDIFF(work_end, work_start))) / 60)) " +
                 " else 0 end total_loan_in " +
                 " FROM dlms_drot_dl_history " +
-                " WHERE plant_location=? and shift_start=? " +
+                " WHERE shift_start=? " +
                 " AND work_center=? and dl_id not in (" +
                 " select dl_id from dlms_drot_dl_allocation where plant_location=? and shift_start=? and orig_assigned_work_center=? )";
 
         SqlRowSet loan_in_result= jdbcPrimaryTemplate.queryForRowSet(sql_loan_in,
-                new Object[]{plant_location,shift_start, work_center,
+                new Object[]{shift_start, work_center,
                         plant_location,shift_start, work_center});
 
         while (loan_in_result.next()){
@@ -150,12 +150,12 @@ public class OffStandardService {
                 " then sum(ROUND(time_to_sec((TIMEDIFF(work_end, work_start))) / 60)) " +
                 " else 0 end total_loan_out " +
                 " FROM dlms_drot_dl_history " +
-                " WHERE plant_location=? and shift_start=? " +
+                " WHERE shift_start=? " +
                 "  and work_center<>? AND dl_id in (" +
                 " select dl_id from dlms_drot_dl_allocation where plant_location=? and shift_start=? and orig_assigned_work_center=? ) ";
 
         SqlRowSet loan_out_result= jdbcPrimaryTemplate.queryForRowSet(sql_loan_out,
-                new Object[]{plant_location,shift_start,
+                new Object[]{shift_start,
                         work_center,
                         plant_location,shift_start, work_center});
 
@@ -165,11 +165,11 @@ public class OffStandardService {
 
         out.put("loan_in_mins", total_loan_in);
         out.put("loan_out_mins", total_loan_out);
-
+        //System.out.println(Arrays.asList(out));
         return out;
     }
 
-    public void callCreateOffStandardData(String s_date, String plant_location, String shift_type) throws Exception {
+    /*public void callCreateOffStandardData(String s_date, String plant_location, String shift_type) throws Exception {
         List<HashMap<String, String>> work_centers = getWorkCenterByDate(s_date, shift_type,plant_location);
 
         if (null == work_centers || work_centers.size() == 0) {
@@ -188,11 +188,14 @@ public class OffStandardService {
                     work_centers.get(i).get("cost_center"), shift_type, plant_location,
                     loan_data, production, hr_minutes);
         }
-    }
+    }*/
 
     public void callCreateOffStandardData2(String s_date, String plant_location) throws Exception {
+        System.out.println("========= start ======= callCreateOffStandardData2 =========");
         List<Map<String, Object>> work_centers = getWorkCenterByDate(s_date, plant_location);
-       // System.out.println(Arrays.asList(work_centers));
+
+        //List<Map<String, Object>> work_centers = testGetWorkCenterByDate("2019-06-14", "0126", "CZ");
+        //System.out.println(Arrays.asList(work_centers));
 
         if (null == work_centers || work_centers.size() == 0) {
             return;
@@ -201,7 +204,7 @@ public class OffStandardService {
         qadService.setFileName(s_date);
 
         for (int i = 0; i < work_centers.size(); i++) {
-           // work_centers.get(i).entrySet().stream().forEach(System.out::println);
+            //work_centers.get(i).entrySet().stream().forEach(System.out::println);
 
             String o_shift_start = work_centers.get(i).get("shift_start").toString();
             String o_shift_finish = work_centers.get(i).get("shift_finish").toString();
@@ -212,55 +215,65 @@ public class OffStandardService {
             Map loan_data = getRealWorkTimeByWorkcenter3(shift_start,
                     shift_finish,
                     work_centers.get(i).get("work_center").toString(), plant_location);
-           //System.out.println("======== loan_data ========");
-/*            loan_data.entrySet()
+/*           System.out.println("======== loan_data ========");
+            loan_data.entrySet()
                     .stream()
                     .forEach(System.out::println);*/
 
            Map production = qadService.calculateOutputMins2(s_date,shift_start,
                    shift_finish, work_centers.get(i).get("work_center").toString(), plant_location);
-          //System.out.println("======== production ========");
+/*          System.out.println("======== production ========");
            if (production != null){
-/*               production.entrySet()
+               production.entrySet()
                        .stream()
-                       .forEach(System.out::println);*/
-           }
-
+                       .forEach(System.out::println);
+           }*/
 
            if (work_centers.get(i).get("shift_type").toString().contains(DAY)){
                Map hr_minutes = hrService.getHrLaborMinsByWorkCenter(s_date, work_centers.get(i).get("work_center").toString(), plant_location, DAY);
+
+               int wc_status_id = getWcStatusId(s_date, plant_location,"DAY", work_centers.get(i).get("work_center").toString());
+               System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   wc_status_id:  " + wc_status_id);
                /*System.out.println("======== hr_minutes ========");
                hr_minutes.entrySet()
                        .stream()
                        .forEach(System.out::println);*/
                insertDlmsWorkcenterOffstandard(s_date, work_centers.get(i).get("work_center").toString(),
                        work_centers.get(i).get("cost_center").toString(), DAY.toLowerCase(), plant_location,
-                       loan_data, production, hr_minutes);
+                       loan_data, production, hr_minutes, wc_status_id);
            }
             if (work_centers.get(i).get("shift_type").toString().contains(NIGHT)){
                 Map hr_minutes = hrService.getHrLaborMinsByWorkCenter(s_date, work_centers.get(i).get("work_center").toString(), plant_location, NIGHT);
+
+                int wc_status_id = getWcStatusId(s_date, plant_location,"NIGHT", work_centers.get(i).get("work_center").toString());
+                System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   wc_status_id:  " + wc_status_id);
 /*                hr_minutes.entrySet()
                         .stream()
                         .forEach(System.out::println);*/
                 insertDlmsWorkcenterOffstandard(s_date, work_centers.get(i).get("work_center").toString(),
                         work_centers.get(i).get("cost_center").toString(), NIGHT.toLowerCase(), plant_location,
-                        loan_data, production, hr_minutes);
+                        loan_data, production, hr_minutes,wc_status_id);
             }
             if (work_centers.get(i).get("shift_type").toString().contains(MIDDLE)){
                 Map hr_minutes = hrService.getHrLaborMinsByWorkCenter(s_date, work_centers.get(i).get("work_center").toString(), plant_location, MIDDLE);
+
+                int wc_status_id = getWcStatusId(s_date, plant_location,"MIDDLE", work_centers.get(i).get("work_center").toString());
+                System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   wc_status_id:  " + wc_status_id);
                 insertDlmsWorkcenterOffstandard(s_date, work_centers.get(i).get("work_center").toString(),
                         work_centers.get(i).get("cost_center").toString(), MIDDLE.toLowerCase(), plant_location,
-                        loan_data, production, hr_minutes);
+                        loan_data, production, hr_minutes,wc_status_id);
             }
 
         }
+
+        System.out.println("========= end ======= callCreateOffStandardData2 =========");
     }
 
     public void insertDlmsWorkcenterOffstandard(String s_date, String work_center, String cost_center,
                                                 String shift_type, String plant_location,
-                                                Map loan_data, Map production, Map hr_minutes) {
+                                                Map loan_data, Map production, Map hr_minutes,int wc_status_id) {
 
-        System.out.println("----------------start-----insertDlmsWorkcenterOffstandard------------------------------");
+        //System.out.println("----------------start-----insertDlmsWorkcenterOffstandard------------------------------");
         deleteExistDlmsWorkcenterOffstandard(plant_location, shift_type, s_date, work_center);
 
         String sql = "insert into dlms_workcenter_offstandard(" +
@@ -271,9 +284,9 @@ public class OffStandardService {
                 "off_standard, " +
                 "off_heads, " +
                 "plant_location, " +
-                "vtyc_pns, production_nums, labor_minutes) " +
+                "vtyc_pns, production_nums, labor_minutes,dlms_drot_wc_status_id) " +
                 "values(?,?,?,?,?,?,?,?,?,?,?,?,?,?" +
-                ",?,?,?,?" +
+                ",?,?,?,?,?" +
                 ")";
 
         Double total_loan_out_minutes = 0.0;
@@ -295,7 +308,14 @@ public class OffStandardService {
         total_loan_in_minutes = Double.valueOf((String)loan_data.get("loan_in_mins"));
 
         if (hr_minutes != null){
-            hr_minutes_total = Integer.parseInt((String)hr_minutes.get("total")) ;
+            String s_hr_minutes = (String)hr_minutes.get("total");
+            System.out.println("**********************************************  s_hr_minutes : " + s_hr_minutes);
+            if (s_hr_minutes.indexOf(".")>0){
+                hr_minutes_total = Integer.parseInt(s_hr_minutes.substring(0,s_hr_minutes.indexOf("."))) ;
+            }else{
+                hr_minutes_total = Integer.parseInt(s_hr_minutes) ;
+            }
+
         }
 
         if (hr_minutes.get("total") != null && hr_minutes.get("total") != "") {
@@ -334,11 +354,11 @@ public class OffStandardService {
                 off_standard,
                 off_heads,
                 plant_location,
-                production_vtyc_pns, production_production_nums, production_labor_minutes
+                production_vtyc_pns, production_production_nums, production_labor_minutes, wc_status_id
         };
 
         jdbcPrimaryTemplate.update(sql, params);
-        System.out.println("------------------------------------------End-----insertDlmsWorkcenterOffstandard----");
+        //System.out.println("------------------------------------------End-----insertDlmsWorkcenterOffstandard----");
     }
 
 
@@ -374,13 +394,19 @@ public class OffStandardService {
         return out;
     }
 
+
     private List<Map<String, Object>>  getWorkCenterByDate(String s_date, String plant_location) throws Exception{
         List out = new ArrayList<HashMap<String, String>>();
 
         String sql = "select  work_center,shift_type,tl_id,shift_start,shift_start,shift_finish,cost_center from dlms_drot_wc_status " +
                 "where date(shift_start)=? and current_work_center_status='FINISH' and plant=? " +
                 "group by work_center,tl_id " +
-                "order by work_center;" ;
+                "order by work_center" ;
+
+/*        String sql = "select  work_center,shift_type,tl_id,shift_start,shift_start,shift_finish,cost_center from dlms_drot_wc_status " +
+                "where date(shift_start)=? and current_work_center_status='FINISH' and plant=? and work_center='IN250T3'" +
+                "group by work_center,tl_id " +
+                "order by work_center" ;*/
 
         Object[] params = new Object[]{
                s_date,plant_location
@@ -393,6 +419,27 @@ public class OffStandardService {
             return null;
         }
     }
+
+    private List<Map<String, Object>>  testGetWorkCenterByDate(String s_date, String tl_id, String plant_location) throws Exception{
+        List out = new ArrayList<HashMap<String, String>>();
+
+        String sql = "select  work_center,shift_type,tl_id,shift_start,shift_start,shift_finish,cost_center from dlms_drot_wc_status " +
+                "where date(shift_start)=? and current_work_center_status='FINISH' and plant=? and tl_id=? " +
+                "group by work_center,tl_id " +
+                "order by work_center" ;
+
+        Object[] params = new Object[]{
+                s_date,plant_location,tl_id
+        };
+        List<Map<String, Object>> result = jdbcPrimaryTemplate.queryForList(sql, params);
+
+        if (result.size() > 0) {
+            return result;
+        }else{
+            return null;
+        }
+    }
+
 
     private List<Map<String, Object>>  getWorkCenterFromQadOnlyByDate(String s_date,String shift_start,String shift_finish, String plant_location) throws Exception{
         List out = new ArrayList<HashMap<String, String>>();
@@ -479,5 +526,21 @@ public class OffStandardService {
 
     }
 
+    public int getWcStatusId(String s_date, String plant_location,String shift,String work_center){
 
+        String wc_status_sql = "select dlms_drot_wc_status_id from dlms_drot_wc_status " +
+                "where plant=? and work_center=? and shift_type like ? and date(shift_start)=?;";
+        Object[] hr_hours_params = new Object[]{
+                plant_location, work_center, "%"+shift+"%", s_date,
+        };
+
+        List<Map<String, Object>> wc_status_list = jdbcPrimaryTemplate.queryForList( wc_status_sql, hr_hours_params);
+
+        if (wc_status_list != null && wc_status_list.size()>0){
+            return (Integer) wc_status_list.get(0).get("dlms_drot_wc_status_id");
+        }else{
+            return 0;
+        }
+
+    }
 }

@@ -38,9 +38,8 @@ public class QadService {
     }
 
     public void runTestCommand() {
-        String s_date = "2019-03-18";
+        String s_date = "2019-06-14";
         String plant_location = "CZ";
-        String shift_type = "day";
 
         try {
             deleteExistQadProductionInfo(s_date, plant_location);
@@ -89,7 +88,7 @@ public class QadService {
 
         ResponseEntity<String> response = restTemplate.exchange(resourceURL, HttpMethod.GET, entity, String.class);
 
-        System.out.println(Arrays.asList(response));
+        //System.out.println(Arrays.asList(response));
 
         if (response.getStatusCode() == HttpStatus.OK) {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -124,6 +123,8 @@ public class QadService {
                         .forEach(System.out::println);*/
                 insertDlmsQadProductionInfo(qadData, s_date, plant_location);
             }
+
+            System.out.println("=========== end of insertDlmsQadProductionInfo ==========");
         }
     }
 
@@ -135,8 +136,9 @@ public class QadService {
         Object[] params = new Object[]{qadData.get("op_wo_op"), qadData.get("op_emp"),
                 qadData.get("op_line"),(int)(Double.parseDouble((String)qadData.get("op_qty_comp"))), qadData.get("op_part"), qadData.get("op_date"), plant_location, qadData.get("cost_center")};
 
+        //System.out.println(Arrays.asList(params));
         jdbcPrimaryTemplate.update(sql, params);
-        System.out.println("=========== end of insertDlmsQadProductionInfo ==========");
+
     }
 
     public Map calculateOutputMins(String s_date, String work_center, String plant_location, String shift_type) {
@@ -202,7 +204,7 @@ public class QadService {
 
         List<Map<String, Object>> production = getProductionInfoByWorkCenter2(shift_start,shift_finish, work_center, plant_location);
 
-        System.out.println(Arrays.asList(production));
+        //System.out.println(Arrays.asList(production));
 
         if (production == null) {
             return null;
@@ -297,7 +299,8 @@ public class QadService {
     public List getProductionInfoByWorkCenter2(String shift_start,String shift_finish, String work_center, String plant_location) {
 
         String sql = "SELECT sum(production_num) production_num, op_part FROM dlms_qad_production_info" +
-                " where op_date>=?  and op_date<=? and upper(op_line)=upper(?) and plant_location=?";
+                " where op_date>=?  and op_date<=? and upper(op_line)=upper(?) and plant_location=? " +
+                "group by op_part";
 
         Object[] params = {shift_start,shift_finish, work_center, plant_location};
 
